@@ -1,0 +1,32 @@
+# Build directories
+build/
+dist/
+*.spec
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Virtual environment
+venv/
+env/
+
+# IDE files
+.idea/
+.vscode/
+
+# Wine bottles and downloaded files
+wine/
+bottles/
+*.exe
+*.dll
+*.zip
+
+# App-specific files
+app_icon.png 
