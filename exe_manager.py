@@ -529,28 +529,43 @@ class WineExeManager(QMainWindow):
     
     def add_exe(self):
         try:
+            print("DEBUG: Starting add_exe method")
             filepath, _ = QFileDialog.getOpenFileName(
                 self,
                 "Select EXE file",
                 "",
                 "EXE files (*.exe);;All files (*.*)"
             )
+            print(f"DEBUG: Selected file: {filepath}")
             
             if not filepath:
+                print("DEBUG: No file selected, returning")
                 return
                 
             # Get name for the application
             name = os.path.basename(filepath).replace(".exe", "")
+            print(f"DEBUG: App name: {name}")
             
             # Show category selection dialog
+            print("DEBUG: About to show category dialog")
             category = self.select_category_dialog(name)
+            print(f"DEBUG: Selected category: {category}")
+            
             if not category:  # User cancelled
+                print("DEBUG: No category selected, returning")
                 return
                 
             # Create a bottle for this application
             bottle_name = f"bottle_{len(self.exes)}"
             bottle_path = os.path.join(self.bottles_dir, bottle_name)
-            os.makedirs(bottle_path, exist_ok=True)
+            print(f"DEBUG: Creating bottle at: {bottle_path}")
+            
+            try:
+                os.makedirs(bottle_path, exist_ok=True)
+                print("DEBUG: Bottle directory created successfully")
+            except Exception as e:
+                print(f"DEBUG: Error creating bottle directory: {str(e)}")
+                raise
             
             # Store app info with category
             exe_info = {
@@ -562,32 +577,55 @@ class WineExeManager(QMainWindow):
                 "launch_options": "",
                 "notes": ""
             }
+            print(f"DEBUG: Created exe_info: {exe_info}")
             
             # Update categories and exes
             if category not in self.categories:
+                print(f"DEBUG: Creating new category: {category}")
                 self.categories[category] = []
             
+            print(f"DEBUG: Current categories before update: {self.categories}")
+            print(f"DEBUG: Current exes before update: {len(self.exes)}")
+            
             self.exes.append(exe_info)
-            self.categories[category].append(len(self.exes) - 1)
+            new_index = len(self.exes) - 1
+            self.categories[category].append(new_index)
+            
+            print(f"DEBUG: Added exe at index {new_index}")
+            print(f"DEBUG: Updated categories: {self.categories}")
             
             # Save changes
+            print("DEBUG: About to save changes")
             self.save_exes()
+            print("DEBUG: Changes saved successfully")
+            
+            print("DEBUG: About to refresh list")
             self.refresh_list()
+            print("DEBUG: List refreshed")
             
             # Show success message
-            self.status_bar.showMessage(f"Added {name} to {category}")
+            success_msg = f"Added {name} to {category}"
+            print(f"DEBUG: {success_msg}")
+            self.status_bar.showMessage(success_msg)
             
             # Find and select the new item
+            print("DEBUG: Looking for new item to select")
             for i in range(self.exe_list.count()):
                 item = self.exe_list.item(i)
-                if item and item.data(Qt.UserRole) == len(self.exes) - 1:
+                if item and item.data(Qt.UserRole) == new_index:
+                    print(f"DEBUG: Found new item at position {i}")
                     item.setSelected(True)
                     self.animate_new_item(item)
                     break
+            
+            print("DEBUG: add_exe completed successfully")
                     
         except Exception as e:
             error_msg = f"Error adding EXE: {str(e)}"
-            print(error_msg)  # Print to console for debugging
+            print(f"DEBUG: ERROR in add_exe: {error_msg}")
+            print(f"DEBUG: Error type: {type(e)}")
+            import traceback
+            print(f"DEBUG: Traceback:\n{traceback.format_exc()}")
             self.status_bar.showMessage(error_msg)
             QMessageBox.critical(self, "Error", error_msg)
     
@@ -603,48 +641,65 @@ class WineExeManager(QMainWindow):
         timer.singleShot(1000, lambda: item.setBackground(QColor("transparent")))
     
     def select_category_dialog(self, app_name):
-        # Check if app is in compatible apps list
-        suggested_category = "Other"
-        for category, apps in self.compatible_apps.items():
-            if app_name in apps:
-                suggested_category = category
-                break
-        
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Select Category")
-        dialog.setModal(True)
-        layout = QVBoxLayout()
-        
-        # Add category selection
-        label = QLabel(f"Select category for {app_name}:")
-        layout.addWidget(label)
-        
-        category_combo = QComboBox()
-        for category in self.categories.keys():
-            category_combo.addItem(category)
-        
-        # Set suggested category
-        index = category_combo.findText(suggested_category)
-        if index >= 0:
-            category_combo.setCurrentIndex(index)
-        
-        layout.addWidget(category_combo)
-        
-        # Add buttons
-        button_box = QHBoxLayout()
-        ok_button = QPushButton("OK")
-        ok_button.clicked.connect(dialog.accept)
-        cancel_button = QPushButton("Cancel")
-        cancel_button.clicked.connect(dialog.reject)
-        button_box.addWidget(ok_button)
-        button_box.addWidget(cancel_button)
-        layout.addLayout(button_box)
-        
-        dialog.setLayout(layout)
-        
-        if dialog.exec_() == QDialog.Accepted:
-            return category_combo.currentText()
-        return "Other"
+        print(f"DEBUG: Starting select_category_dialog for {app_name}")
+        try:
+            # Check if app is in compatible apps list
+            suggested_category = "Other"
+            for category, apps in self.compatible_apps.items():
+                if app_name in apps:
+                    suggested_category = category
+                    break
+            
+            print(f"DEBUG: Suggested category: {suggested_category}")
+            
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Select Category")
+            dialog.setModal(True)
+            layout = QVBoxLayout()
+            
+            # Add category selection
+            label = QLabel(f"Select category for {app_name}:")
+            layout.addWidget(label)
+            
+            category_combo = QComboBox()
+            for category in self.categories.keys():
+                category_combo.addItem(category)
+            
+            # Set suggested category
+            index = category_combo.findText(suggested_category)
+            if index >= 0:
+                category_combo.setCurrentIndex(index)
+            
+            layout.addWidget(category_combo)
+            
+            # Add buttons
+            button_box = QHBoxLayout()
+            ok_button = QPushButton("OK")
+            ok_button.clicked.connect(dialog.accept)
+            cancel_button = QPushButton("Cancel")
+            cancel_button.clicked.connect(dialog.reject)
+            button_box.addWidget(ok_button)
+            button_box.addWidget(cancel_button)
+            layout.addLayout(button_box)
+            
+            dialog.setLayout(layout)
+            
+            print("DEBUG: About to show category dialog")
+            result = dialog.exec_()
+            print(f"DEBUG: Dialog result: {result}")
+            
+            if result == QDialog.Accepted:
+                selected_category = category_combo.currentText()
+                print(f"DEBUG: Selected category: {selected_category}")
+                return selected_category
+            print("DEBUG: Dialog cancelled")
+            return "Other"
+            
+        except Exception as e:
+            print(f"DEBUG: Error in select_category_dialog: {str(e)}")
+            import traceback
+            print(f"DEBUG: Traceback:\n{traceback.format_exc()}")
+            return "Other"
     
     def refresh_list(self):
         try:
