@@ -2,8 +2,6 @@
 
 A modern, user-friendly application that allows you to run Windows applications on macOS without requiring sudo access. The app creates isolated Wine environments (bottles) for each Windows application, ensuring better compatibility and organization.
 
-![Wine EXE Manager Screenshot](screenshot.png)
-
 ## Features
 
 - 🍷 Run Windows applications on macOS using Wine
@@ -12,88 +10,52 @@ A modern, user-friendly application that allows you to run Windows applications 
 - 📁 Organize applications into categories
 - 🎨 Modern, user-friendly interface
 - 🛠 Customizable launch options for each application
-- 📝 Add notes and custom names for your applications
 - 🔄 Automatic Wine installation and management
 - 🎯 Separate Wine bottles for each application
 
-## Installation
+## Installation & Launch
 
-### Option 1: Download the Pre-built App
-
-1. Go to the [Releases](../../releases) page
-2. Download the latest `Wine-EXE-Manager-macOS.zip`
-3. Extract the ZIP file
-4. Move "Wine EXE Manager.app" to your Applications folder
-5. Right-click the app and select "Open" (required only the first time on macOS)
-
-### Option 2: Build from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/wine-exe-manager.git
-cd wine-exe-manager
-
-# Install Python requirements
-pip3 install -r requirements.txt
-
-# Run the setup script to create the app
-python3 setup.py
-```
-
-## Usage
-
-1. Launch the app
-2. Click "Install Wine" if this is your first time (the app will download and set up Wine automatically)
-3. Click "Add EXE" to add a Windows application
-4. Select the category for your application
-5. Double-click the application to launch it
-6. Right-click for additional options:
-   - Customize display name and launch options
-   - Move to different category
-   - View compatibility information
-   - Remove application
-
-## Compatibility
-
-The app includes a built-in compatibility database for popular applications:
-
-### Games
-- Balatro (Platinum compatibility)
-- Rocket League (Gold compatibility)
-
-### Productivity
-- Notepad++ (Platinum compatibility)
-
-More applications will be added to the compatibility database in future updates.
+1. Download the latest release from the [Releases](https://github.com/AnnoyingAlarm21/EXEmanager/releases) page
+2. Extract the ZIP file to your desired location
+3. **To Launch:**
+   - Double-click the `launch.command` file
+   - On first launch, it will:
+     - Create a virtual environment
+     - Install required dependencies
+     - Start the application
+   - If you get a security warning, go to System Settings > Privacy & Security and allow the app to run
 
 ## Requirements
 
 - macOS 10.15 or later
-- Python 3.6 or later (for building from source)
-- Internet connection for Wine download
+- Python 3.7 or later (install from [python.org](https://www.python.org/downloads/))
+- Internet connection for Wine download (first launch only)
 
-## Known Issues
+## Usage
 
-- Some applications may require additional Windows dependencies
-- Not all Windows applications are compatible with Wine
-- Performance may vary depending on the application
+1. Launch the application using `launch.command`
+2. Click "Add Windows Application" to add your .exe files
+3. Double-click an application to launch it
+4. Right-click for more options:
+   - Customize launch options
+   - Add notes
+   - Move to different categories
+   - Remove applications
 
-## Contributing
+## Known Compatible Applications
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+- Balatro (Platinum compatibility)
+- Rocket League (Gold compatibility)
+- Notepad++ (Platinum compatibility)
 
-### Adding Applications to Compatibility Database
+## Troubleshooting
 
-To add an application to the compatibility database:
+If you encounter any issues:
 
-1. Test the application thoroughly with the latest version of Wine
-2. Fork the repository
-3. Add the application information to the `compatible_apps` dictionary in `exe_manager.py`
-4. Submit a Pull Request with:
-   - Application name and category
-   - Compatibility rating (Platinum/Gold/Silver/Bronze)
-   - Required Wine version
-   - Any special notes or requirements
+1. Make sure Python 3 is installed from python.org
+2. Try deleting the `venv` folder and launching again
+3. Check the application's compatibility in the built-in database
+4. Make sure your .exe file is not corrupted
 
 ## License
 
