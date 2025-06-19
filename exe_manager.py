@@ -13,9 +13,9 @@ try:
                                 QHBoxLayout, QPushButton, QListWidget, QLabel, 
                                 QFileDialog, QMessageBox, QMenu, QAction, QListWidgetItem,
                                 QGraphicsDropShadowEffect, QSplitter, QFrame, QDialog, QComboBox,
-                                QLineEdit, QTextEdit, QAbstractItemView, QScroller, QDrag, QMimeData)
+                                QLineEdit, QTextEdit)
     from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize, QPropertyAnimation, QEasingCurve, QPoint, QTimer
-    from PyQt5.QtGui import QIcon, QColor, QFont, QPixmap, QPalette, QBrush, QLinearGradient, QPainter, QRect
+    from PyQt5.QtGui import QIcon, QColor, QFont, QPixmap, QPalette, QBrush, QLinearGradient
 except ImportError:
     print("PyQt5 is required. Installing...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "PyQt5"])
@@ -23,9 +23,9 @@ except ImportError:
                                 QHBoxLayout, QPushButton, QListWidget, QLabel, 
                                 QFileDialog, QMessageBox, QMenu, QAction, QListWidgetItem,
                                 QGraphicsDropShadowEffect, QSplitter, QFrame, QDialog, QComboBox,
-                                QLineEdit, QTextEdit, QAbstractItemView, QScroller, QDrag, QMimeData)
+                                QLineEdit, QTextEdit)
     from PyQt5.QtCore import Qt, QThread, pyqtSignal, QSize, QPropertyAnimation, QEasingCurve, QPoint, QTimer
-    from PyQt5.QtGui import QIcon, QColor, QFont, QPixmap, QPalette, QBrush, QLinearGradient, QPainter, QRect
+    from PyQt5.QtGui import QIcon, QColor, QFont, QPixmap, QPalette, QBrush, QLinearGradient
 
 # Import wine installer
 try:
@@ -43,78 +43,94 @@ class WineInstallerThread(QThread):
         self.finished.emit(success)
 
 class StyledButton(QPushButton):
-    def __init__(self, text, primary=False, parent=None):
+    def __init__(self, text, parent=None, primary=False):
         super().__init__(text, parent)
-        if primary:
-            self.setProperty("primary", "true")
+        self.primary = primary
+        self.setFixedHeight(40)
+        self.setFont(QFont("Arial", 11))
+        
+        # Apply shadow effect
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor(0, 0, 0, 80))
+        shadow.setOffset(0, 3)
+        self.setGraphicsEffect(shadow)
+        
         self.setCursor(Qt.PointingHandCursor)
-        self.setMinimumHeight(36)
+        self.update_style()
+    
+    def update_style(self):
+        if self.primary:
+            self.setStyleSheet("""
+                QPushButton {
+                    background-color: #5c2d91;
+                    color: white;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                }
+                QPushButton:hover {
+                    background-color: #7c3dbe;
+                }
+                QPushButton:pressed {
+                    background-color: #4a2475;
+                }
+                QPushButton:disabled {
+                    background-color: #cccccc;
+                    color: #888888;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QPushButton {
+                    background-color: #f0f0f0;
+                    color: #333333;
+                    border: none;
+                    border-radius: 6px;
+                    padding: 8px 16px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+                QPushButton:pressed {
+                    background-color: #d0d0d0;
+                }
+                QPushButton:disabled {
+                    background-color: #f5f5f5;
+                    color: #aaaaaa;
+                }
+            """)
 
 class ExeListWidget(QListWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setSpacing(4)
-        self.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        self.setDragEnabled(True)
-        self.setAcceptDrops(True)
-        self.setDropIndicatorShown(True)
-        self.setDefaultDropAction(Qt.MoveAction)
-        self.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.setViewMode(QListWidget.ListMode)
-        self.setUniformItemSizes(False)
-        self.setWordWrap(True)
+        self.setStyleSheet("""
+            QListWidget {
+                background-color: #ffffff;
+                border-radius: 8px;
+                border: 1px solid #e0e0e0;
+                padding: 5px;
+            }
+            QListWidget::item {
+                height: 50px;
+                border-radius: 6px;
+                margin: 3px;
+            }
+            QListWidget::item:selected {
+                background-color: #e6e0f0;
+                color: #5c2d91;
+            }
+            QListWidget::item:hover {
+                background-color: #f0f0f0;
+            }
+        """)
         
-        # Enable smooth scrolling
-        scroller = QScroller.scroller(self.viewport())
-        scroller.grabGesture(self.viewport(), QScroller.LeftMouseButtonGesture)
-        scrollerProps = scroller.scrollerProperties()
-        scrollerProps.setScrollMetric(QScrollerProperties.VerticalOvershootPolicy, QScrollerProperties.OvershootAlwaysOff)
-        scroller.setScrollerProperties(scrollerProps)
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-        else:
-            event.ignore()
-
-    def dropEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-            for url in event.mimeData().urls():
-                if url.isLocalFile():
-                    file_path = url.toLocalFile()
-                    if file_path.lower().endswith('.exe'):
-                        self.parent().add_exe_file(file_path)
-        else:
-            event.ignore()
-
-    def startDrag(self, supportedActions):
-        item = self.currentItem()
-        if not item:
-            return
-            
-        mimeData = QMimeData()
-        mimeData.setText(item.text())
-        
-        drag = QDrag(self)
-        drag.setMimeData(mimeData)
-        
-        # Create a pixmap for drag visual
-        pixmap = QPixmap(self.viewport().size())
-        pixmap.fill(Qt.transparent)
-        
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
-        option = self.viewOptions()
-        option.rect = QRect(0, 0, pixmap.width(), item.sizeHint().height())
-        self.itemDelegate().paint(painter, option, self.indexFromItem(item))
-        painter.end()
-        
-        drag.setPixmap(pixmap)
-        drag.setHotSpot(QPoint(pixmap.width() / 2, pixmap.height() / 2))
-        
-        drag.exec_(supportedActions)
+        # Apply shadow effect
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(20)
+        shadow.setColor(QColor(0, 0, 0, 40))
+        shadow.setOffset(0, 4)
+        self.setGraphicsEffect(shadow)
 
 class WineExeManager(QMainWindow):
     def __init__(self):
@@ -184,146 +200,90 @@ class WineExeManager(QMainWindow):
         self.check_wine()
         
     def set_application_style(self):
-        # Set global application style with modern colors and styling
+        # Set global application style with modern, Whiskey-like colors
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #f8f9fb;
             }
             QStatusBar {
-                background-color: #ffffff;
-                color: #1a1b1e;
+                background-color: #2d3436;
+                color: white;
                 padding: 8px;
                 font-weight: 500;
-                border-top: 1px solid #e1e2e6;
+                border-top: 1px solid #e0e0e0;
             }
             QSplitter::handle {
-                background-color: #e1e2e6;
+                background-color: #e8e9eb;
             }
             QLabel {
-                color: #1a1b1e;
+                color: #2d3436;
                 font-size: 14px;
             }
             QFrame#sidebar {
-                background-color: #ffffff;
-                border-right: 1px solid #e1e2e6;
-                padding: 0px;
+                background-color: #2d3436;
+                border-radius: 0px;
                 margin: 0px;
             }
             QLabel#appTitle {
-                color: #1a1b1e;
-                font-size: 24px;
+                color: white;
+                font-size: 20px;
                 font-weight: bold;
-                padding: 20px;
+                padding: 20px 0px 5px 0px;
             }
             QLabel#appSubtitle {
-                color: #6b6c6f;
-                font-size: 14px;
-                padding-left: 20px;
-                padding-right: 20px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
             }
             QPushButton {
-                background-color: #ffffff;
-                color: #1a1b1e;
-                border: 1px solid #e1e2e6;
-                border-radius: 8px;
-                padding: 12px;
+                border-radius: 6px;
+                padding: 8px 16px;
                 font-weight: 500;
-                min-height: 20px;
             }
             QPushButton:hover {
-                background-color: #f8f9fb;
-                border-color: #d1d2d6;
-            }
-            QPushButton:pressed {
-                background-color: #e1e2e6;
-            }
-            QPushButton[primary="true"] {
-                background-color: #007AFF;
-                color: white;
-                border: none;
-            }
-            QPushButton[primary="true"]:hover {
-                background-color: #0066FF;
-            }
-            QPushButton[primary="true"]:pressed {
-                background-color: #0055FF;
+                background-color: #3498db;
             }
             QListWidget {
-                background-color: #ffffff;
-                border: 1px solid #e1e2e6;
-                border-radius: 12px;
+                background-color: transparent;
+                border: none;
+                border-radius: 0px;
                 padding: 8px;
             }
             QListWidget::item {
-                background-color: #ffffff;
+                background-color: white;
                 border-radius: 8px;
-                margin: 4px;
+                margin: 4px 8px;
                 padding: 12px;
-                min-height: 44px;
+                min-height: 40px;
+                border: 1px solid #e0e0e0;
             }
             QListWidget::item:selected {
                 background-color: #f0f7ff;
-                color: #007AFF;
-                border: 1px solid #007AFF;
+                color: #2d3436;
+                border: 1px solid #3498db;
             }
-            QListWidget::item:hover:!selected {
-                background-color: #f8f9fb;
+            QListWidget::item:hover {
+                background-color: #f5f9ff;
+                border: 1px solid #3498db;
             }
             QMenu {
-                background-color: #ffffff;
-                border: 1px solid #e1e2e6;
+                background-color: white;
+                border: 1px solid #e0e0e0;
                 border-radius: 8px;
-                padding: 8px;
+                padding: 5px;
             }
             QMenu::item {
                 padding: 8px 24px;
-                border-radius: 6px;
+                border-radius: 4px;
                 margin: 2px;
             }
             QMenu::item:selected {
                 background-color: #f0f7ff;
-                color: #007AFF;
+                color: #2d3436;
             }
             QMenu::separator {
                 height: 1px;
-                background-color: #e1e2e6;
+                background-color: #e0e0e0;
                 margin: 4px 8px;
-            }
-            QComboBox {
-                background-color: #ffffff;
-                border: 1px solid #e1e2e6;
-                border-radius: 8px;
-                padding: 8px;
-                min-height: 20px;
-            }
-            QComboBox:hover {
-                border-color: #d1d2d6;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border: none;
-            }
-            QLineEdit {
-                background-color: #ffffff;
-                border: 1px solid #e1e2e6;
-                border-radius: 8px;
-                padding: 8px;
-                min-height: 20px;
-            }
-            QLineEdit:focus {
-                border-color: #007AFF;
-            }
-            QTextEdit {
-                background-color: #ffffff;
-                border: 1px solid #e1e2e6;
-                border-radius: 8px;
-                padding: 8px;
-            }
-            QTextEdit:focus {
-                border-color: #007AFF;
             }
         """)
         
@@ -353,10 +313,10 @@ class WineExeManager(QMainWindow):
         # Create sidebar
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(280)
+        sidebar.setFixedWidth(250)
         sidebar_layout = QVBoxLayout(sidebar)
-        sidebar_layout.setContentsMargins(0, 0, 0, 20)
-        sidebar_layout.setSpacing(8)
+        sidebar_layout.setContentsMargins(20, 30, 20, 20)
+        sidebar_layout.setSpacing(15)
         
         # Add app title to sidebar
         app_title = QLabel("Wine EXE Manager")
@@ -368,52 +328,48 @@ class WineExeManager(QMainWindow):
         app_subtitle.setObjectName("appSubtitle")
         sidebar_layout.addWidget(app_subtitle)
         
-        sidebar_layout.addSpacing(20)
+        sidebar_layout.addSpacing(30)
         
-        # Create button container with padding
-        button_container = QWidget()
-        button_layout = QVBoxLayout(button_container)
-        button_layout.setContentsMargins(20, 0, 20, 0)
-        button_layout.setSpacing(8)
-        
-        # Add buttons to container
-        self.add_btn = StyledButton("Add Windows Application", primary=True)
+        # Add buttons to sidebar
+        self.add_btn = StyledButton("Add EXE", primary=True)
         self.add_btn.clicked.connect(self.add_exe)
-        button_layout.addWidget(self.add_btn)
+        sidebar_layout.addWidget(self.add_btn)
         
         self.refresh_btn = StyledButton("Refresh List")
         self.refresh_btn.clicked.connect(self.refresh_list)
-        button_layout.addWidget(self.refresh_btn)
+        sidebar_layout.addWidget(self.refresh_btn)
         
         self.install_wine_btn = StyledButton("Install Wine")
         self.install_wine_btn.clicked.connect(self.download_wine)
-        button_layout.addWidget(self.install_wine_btn)
+        sidebar_layout.addWidget(self.install_wine_btn)
         
-        sidebar_layout.addWidget(button_container)
         sidebar_layout.addStretch(1)
         
         # Add version info at bottom of sidebar
         version_info = QLabel("Version 1.0")
-        version_info.setStyleSheet("color: #6b6c6f; font-size: 12px; padding: 0 20px;")
+        version_info.setStyleSheet("color: rgba(255, 255, 255, 0.5); font-size: 10px;")
         sidebar_layout.addWidget(version_info, alignment=Qt.AlignBottom)
         
         # Create content area
         content_area = QWidget()
         content_layout = QVBoxLayout(content_area)
         content_layout.setContentsMargins(30, 30, 30, 30)
-        content_layout.setSpacing(16)
         
         # Add header
-        header = QLabel("Your Applications")
-        header.setStyleSheet("font-size: 28px; font-weight: bold; color: #1a1b1e;")
-        content_layout.addWidget(header)
+        header_layout = QHBoxLayout()
+        header = QLabel("Your Windows Applications")
+        header.setStyleSheet("font-size: 24px; font-weight: bold; color: #333;")
+        header_layout.addWidget(header)
+        content_layout.addLayout(header_layout)
         
         # Add instructions
         instructions = QLabel("Double-click an application to launch it, or right-click for more options.")
-        instructions.setStyleSheet("color: #6b6c6f; margin-bottom: 16px;")
+        instructions.setStyleSheet("color: #666; margin-bottom: 10px;")
         content_layout.addWidget(instructions)
         
-        # Create list widget for EXEs
+        content_layout.addSpacing(10)
+        
+        # Create list widget for EXEs with custom styling
         self.exe_list = ExeListWidget()
         self.exe_list.itemDoubleClicked.connect(self.launch_selected)
         self.exe_list.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -436,39 +392,25 @@ class WineExeManager(QMainWindow):
         QTimer.singleShot(100, self.animate_startup)
     
     def animate_startup(self):
-        # Fade in animation for the window
-        self.setWindowOpacity(0)
-        animation = QPropertyAnimation(self, b"windowOpacity")
-        animation.setDuration(500)
-        animation.setStartValue(0)
-        animation.setEndValue(1)
-        animation.setEasingCurve(QEasingCurve.OutCubic)
-        animation.start()
+        # Animate the sidebar buttons
+        for i, button in enumerate([self.add_btn, self.refresh_btn, self.install_wine_btn]):
+            button.setGraphicsEffect(None)  # Remove shadow temporarily for animation
+            
+            # Create opacity animation
+            button.setStyleSheet("background-color: transparent; color: transparent; border: none;")
+            
+            # Use a timer to reset the style after animation
+            QTimer.singleShot(400 + i * 100, lambda btn=button: self.reset_button_style(btn))
+    
+    def reset_button_style(self, button):
+        button.update_style()
         
-        # Slide in animation for sidebar items
-        for i in range(self.sidebar.layout().count()):
-            widget = self.sidebar.layout().itemAt(i).widget()
-            if widget:
-                pos = widget.pos()
-                widget.move(pos.x() - 50, pos.y())
-                anim = QPropertyAnimation(widget, b"pos")
-                anim.setDuration(600)
-                anim.setStartValue(QPoint(pos.x() - 50, pos.y()))
-                anim.setEndValue(QPoint(pos.x(), pos.y()))
-                anim.setEasingCurve(QEasingCurve.OutCubic)
-                anim.setDelay(i * 50)  # Stagger the animations
-                anim.start()
-        
-        # Scale up animation for content
-        content = self.centralWidget().layout().itemAt(1).widget()
-        content.setGeometry(content.x(), content.y(), content.width() * 0.95, content.height() * 0.95)
-        anim = QPropertyAnimation(content, b"geometry")
-        anim.setDuration(600)
-        anim.setStartValue(content.geometry())
-        anim.setEndValue(QRect(content.x(), content.y(), content.width() / 0.95, content.height() / 0.95))
-        anim.setEasingCurve(QEasingCurve.OutCubic)
-        anim.setDelay(300)
-        anim.start()
+        # Re-apply shadow effect
+        shadow = QGraphicsDropShadowEffect(button)
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor(0, 0, 0, 80))
+        shadow.setOffset(0, 3)
+        button.setGraphicsEffect(shadow)
     
     def check_wine(self):
         # Check if bundled Wine exists
@@ -689,16 +631,17 @@ class WineExeManager(QMainWindow):
             QMessageBox.information(self, "Select an EXE", "Please select an application to launch")
             return
             
-        # Get the selected item's exe_index from UserRole data
+        # Get the selected item's data
         exe_index = selected_items[0].data(Qt.UserRole)
         if exe_index is None:
-            return  # This is a category header or spacer
+            QMessageBox.information(self, "Select an EXE", "Please select a valid application")
+            return
             
         exe_info = self.exes[exe_index]
         
         # Check if the file exists
         if not os.path.exists(exe_info["path"]):
-            QMessageBox.critical(self, "Error", f"File not found: {exe_info['path']}\nThe file may have been moved or deleted.")
+            QMessageBox.critical(self, "Error", f"File not found: {exe_info['path']}")
             return
             
         # Launch with Wine
@@ -708,14 +651,11 @@ class WineExeManager(QMainWindow):
             
         bottle_path = os.path.join(self.bottles_dir, exe_info["bottle"])
         
-        # Ensure bottle directory exists
-        os.makedirs(bottle_path, exist_ok=True)
-        
-        # Set environment variables
+        # Set WINEPREFIX to the bottle directory
         env = os.environ.copy()
         env["WINEPREFIX"] = bottle_path
         
-        # Set DYLD_LIBRARY_PATH if using bundled Wine
+        # Set DYLD_LIBRARY_PATH if we're using our bundled Wine
         if self.wine_dir in wine_cmd:
             wine_lib_dir = os.path.join(os.path.dirname(os.path.dirname(wine_cmd)), "lib")
             if os.path.exists(wine_lib_dir):
@@ -726,34 +666,22 @@ class WineExeManager(QMainWindow):
         if exe_info.get("launch_options"):
             cmd.extend(exe_info["launch_options"].split())
         
+        # Launch the EXE
         try:
-            # Show launch status
-            self.status_bar.showMessage(f"Launching {exe_info.get('custom_name', exe_info['name'])}...")
+            subprocess.Popen(cmd, env=env)
+            self.status_bar.showMessage(f"Launched {exe_info.get('custom_name', exe_info['name'])}")
             
-            # Launch the EXE
-            process = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            # Visual feedback animation
+            item = selected_items[0]
+            original_bg = item.background()
+            item.setBackground(QColor("#ebfbee"))  # Light green background
             
-            # Check if process started successfully
-            if process.poll() is None:
-                self.status_bar.showMessage(f"Launched {exe_info.get('custom_name', exe_info['name'])} successfully")
-                
-                # Visual feedback animation
-                item = selected_items[0]
-                original_bg = item.background()
-                item.setBackground(QColor("#d1f7c4"))  # Green background
-                
-                # Reset background after animation
-                timer = QTimer(self)
-                timer.singleShot(1000, lambda: item.setBackground(original_bg))
-            else:
-                stdout, stderr = process.communicate()
-                error_msg = stderr.decode() if stderr else "Unknown error"
-                QMessageBox.critical(self, "Launch Error", 
-                    f"Failed to launch {exe_info['name']}.\nError: {error_msg}")
-                
+            # Reset background after animation
+            timer = QTimer(self)
+            timer.singleShot(1000, lambda: item.setBackground(original_bg))
+            
         except Exception as e:
-            QMessageBox.critical(self, "Error", 
-                f"Failed to launch {exe_info['name']}:\n{str(e)}\n\nPlease check if Wine is installed correctly.")
+            QMessageBox.critical(self, "Error", f"Failed to launch {exe_info['name']}: {str(e)}")
     
     def show_context_menu(self, position):
         selected_items = self.exe_list.selectedItems()
