@@ -10,71 +10,81 @@ def install_requirements():
     subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
     subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
+def create_icns():
+    """Create app icon"""
+    if not os.path.exists("app_icon.png"):
+        print("Warning: app_icon.png not found, using default icon")
+        return None
+        
+    icons_dir = "app.iconset"
+    if os.path.exists(icons_dir):
+        shutil.rmtree(icons_dir)
+    os.makedirs(icons_dir)
+    
+    sizes = [16, 32, 64, 128, 256, 512, 1024]
+    
+    for size in sizes:
+        subprocess.call([
+            "sips",
+            "-z", str(size), str(size),
+            "app_icon.png",
+            "--out", f"{icons_dir}/icon_{size}x{size}.png"
+        ])
+        if size <= 512:  # Create @2x versions for retina
+            subprocess.call([
+                "sips",
+                "-z", str(size*2), str(size*2),
+                "app_icon.png",
+                "--out", f"{icons_dir}/icon_{size}x{size}@2x.png"
+            ])
+    
+    subprocess.call(["iconutil", "-c", "icns", icons_dir])
+    shutil.rmtree(icons_dir)
+    return "app.icns"
+
 def build_app():
     """Build the app using PyInstaller"""
     # Clean previous builds
     for path in ["build", "dist"]:
         if os.path.exists(path):
             shutil.rmtree(path)
-
+    
     # Create app icon
     icon_path = create_icns()
-
+    
     # Build the app
     subprocess.check_call([
         "pyinstaller",
         "--name=Wine EXE Manager",
         "--windowed",
-        "--onefile",
-        f"--icon={icon_path}",
+        "--onedir",
+        f"--icon={icon_path}" if icon_path else "",
         "--add-data=README.md:.",
         "--add-data=requirements.txt:.",
+        "--add-data=wine_installer.py:.",
+        "--add-data=app_icon.png:.",
+        "--hidden-import=PyQt5.QtWidgets",
+        "--hidden-import=PyQt5.QtCore",
+        "--hidden-import=PyQt5.QtGui",
         "exe_manager.py"
     ])
-
-def create_icns():
-    """Create app icon"""
-    try:
-        from PIL import Image
-        import io
-
-        # Create a purple square icon with 'W' in the middle
-        size = 512
-        background_color = (142, 68, 173)  # Purple color
-        icon = Image.new('RGB', (size, size), background_color)
-        
-        # Save as PNG
-        icon_path = "app_icon.png"
-        icon.save(icon_path)
-        
-        return icon_path
-    except Exception as e:
-        print(f"Warning: Could not create icon: {e}")
-        return None
-
-def create_zip():
-    """Create ZIP file for distribution"""
-    app_path = os.path.join("dist", "Wine EXE Manager.app")
+    
+    # Clean up icon
+    if icon_path and os.path.exists(icon_path):
+        os.remove(icon_path)
+    
+    # Create ZIP archive
+    app_path = "dist/Wine EXE Manager.app"
     if os.path.exists(app_path):
-        shutil.make_archive("Wine-EXE-Manager-macOS", "zip", "dist", "Wine EXE Manager.app")
-        print(f"\nCreated Wine-EXE-Manager-macOS.zip")
-
-def main():
-    print("Setting up Wine EXE Manager...")
-    
-    # Ensure we have all requirements
-    print("\nInstalling requirements...")
-    install_requirements()
-    
-    # Build the app
-    print("\nBuilding app...")
-    build_app()
-    
-    # Create distribution ZIP
-    print("\nCreating distribution package...")
-    create_zip()
-    
-    print("\nDone! You can find the app in the dist directory and the ZIP package in the current directory.")
+        shutil.make_archive("Wine-EXE-Manager-v1.1.0-macOS", "zip", "dist", "Wine EXE Manager.app")
+        print(f"\nApp bundle created successfully at: {app_path}")
+        print("ZIP archive created: Wine-EXE-Manager-v1.1.0-macOS.zip")
+    else:
+        print("Error: App bundle creation failed")
 
 if __name__ == "__main__":
-    main() 
+    print("Installing requirements...")
+    install_requirements()
+    
+    print("\nBuilding app bundle...")
+    build_app() 
