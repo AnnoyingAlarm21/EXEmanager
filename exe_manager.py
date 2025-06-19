@@ -288,17 +288,68 @@ class WineExeManager(QMainWindow):
         """)
         
     def load_exes(self):
-        if os.path.exists(self.exes_file):
-            try:
+        try:
+            if os.path.exists(self.exes_file):
                 with open(self.exes_file, 'r') as f:
-                    return json.load(f)
-            except:
-                return []
-        return []
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        self.exes = data.get('exes', [])
+                        self.categories = data.get('categories', {
+                            "Games": [],
+                            "Productivity": [],
+                            "Other": []
+                        })
+                    else:
+                        # Handle old format where only exes were saved
+                        self.exes = data
+                        # Rebuild categories
+                        self.categories = {
+                            "Games": [],
+                            "Productivity": [],
+                            "Other": []
+                        }
+                        for i, exe in enumerate(self.exes):
+                            category = exe.get("category", "Other")
+                            if category not in self.categories:
+                                self.categories[category] = []
+                            self.categories[category].append(i)
+                    return self.exes
+            return []
+        except Exception as e:
+            error_msg = f"Error loading data: {str(e)}"
+            print(error_msg)  # Print to console for debugging
+            self.status_bar.showMessage(error_msg)
+            QMessageBox.critical(self, "Error", error_msg)
+            return []
     
     def save_exes(self):
-        with open(self.exes_file, 'w') as f:
-            json.dump(self.exes, f)
+        try:
+            # Ensure app directory exists
+            os.makedirs(self.app_dir, exist_ok=True)
+            
+            # Create a backup of the existing file if it exists
+            if os.path.exists(self.exes_file):
+                backup_file = f"{self.exes_file}.bak"
+                try:
+                    import shutil
+                    shutil.copy2(self.exes_file, backup_file)
+                except Exception as e:
+                    print(f"Warning: Could not create backup: {str(e)}")
+            
+            # Save the data
+            with open(self.exes_file, 'w') as f:
+                json.dump({
+                    'exes': self.exes,
+                    'categories': self.categories
+                }, f, indent=2)
+                
+            self.status_bar.showMessage("Changes saved successfully")
+            
+        except Exception as e:
+            error_msg = f"Error saving data: {str(e)}"
+            print(error_msg)  # Print to console for debugging
+            self.status_bar.showMessage(error_msg)
+            QMessageBox.critical(self, "Error", error_msg)
     
     def create_ui(self):
         # Create central widget with main layout
@@ -477,48 +528,68 @@ class WineExeManager(QMainWindow):
         self.install_wine_btn.setEnabled(True)
     
     def add_exe(self):
-        filepath, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select EXE file",
-            "",
-            "EXE files (*.exe);;All files (*.*)"
-        )
-        
-        if not filepath:
-            return
+        try:
+            filepath, _ = QFileDialog.getOpenFileName(
+                self,
+                "Select EXE file",
+                "",
+                "EXE files (*.exe);;All files (*.*)"
+            )
             
-        # Get name for the application
-        name = os.path.basename(filepath).replace(".exe", "")
-        
-        # Show category selection dialog
-        category = self.select_category_dialog(name)
-        
-        # Create a bottle for this application
-        bottle_name = f"bottle_{len(self.exes)}"
-        bottle_path = os.path.join(self.bottles_dir, bottle_name)
-        os.makedirs(bottle_path, exist_ok=True)
-        
-        # Store app info with category
-        exe_info = {
-            "name": name,
-            "path": filepath,
-            "bottle": bottle_name,
-            "category": category,
-            "custom_name": name,
-            "launch_options": "",
-            "notes": ""
-        }
-        
-        self.exes.append(exe_info)
-        self.categories[category].append(len(self.exes) - 1)
-        self.save_exes()
-        self.refresh_list()
-        self.status_bar.showMessage(f"Added {name} to {category}")
-        
-        # Animate the new item
-        last_item = self.exe_list.item(self.exe_list.count() - 1)
-        last_item.setSelected(True)
-        self.animate_new_item(last_item)
+            if not filepath:
+                return
+                
+            # Get name for the application
+            name = os.path.basename(filepath).replace(".exe", "")
+            
+            # Show category selection dialog
+            category = self.select_category_dialog(name)
+            if not category:  # User cancelled
+                return
+                
+            # Create a bottle for this application
+            bottle_name = f"bottle_{len(self.exes)}"
+            bottle_path = os.path.join(self.bottles_dir, bottle_name)
+            os.makedirs(bottle_path, exist_ok=True)
+            
+            # Store app info with category
+            exe_info = {
+                "name": name,
+                "path": filepath,
+                "bottle": bottle_name,
+                "category": category,
+                "custom_name": name,
+                "launch_options": "",
+                "notes": ""
+            }
+            
+            # Update categories and exes
+            if category not in self.categories:
+                self.categories[category] = []
+            
+            self.exes.append(exe_info)
+            self.categories[category].append(len(self.exes) - 1)
+            
+            # Save changes
+            self.save_exes()
+            self.refresh_list()
+            
+            # Show success message
+            self.status_bar.showMessage(f"Added {name} to {category}")
+            
+            # Find and select the new item
+            for i in range(self.exe_list.count()):
+                item = self.exe_list.item(i)
+                if item and item.data(Qt.UserRole) == len(self.exes) - 1:
+                    item.setSelected(True)
+                    self.animate_new_item(item)
+                    break
+                    
+        except Exception as e:
+            error_msg = f"Error adding EXE: {str(e)}"
+            print(error_msg)  # Print to console for debugging
+            self.status_bar.showMessage(error_msg)
+            QMessageBox.critical(self, "Error", error_msg)
     
     def animate_new_item(self, item):
         # Save original background
@@ -576,44 +647,56 @@ class WineExeManager(QMainWindow):
         return "Other"
     
     def refresh_list(self):
-        self.exe_list.clear()
-        
-        # Add category headers and apps
-        for category in self.categories:
-            # Add category header
-            header_item = QListWidgetItem()
-            header_item.setText(f"📁 {category}")
-            header_item.setBackground(QColor("#f0f0f0"))
-            header_item.setFlags(header_item.flags() & ~Qt.ItemIsSelectable)
-            self.exe_list.addItem(header_item)
+        try:
+            self.exe_list.clear()
             
-            # Add apps in this category
-            for exe_index in self.categories[category]:
-                exe = self.exes[exe_index]
-                item = QListWidgetItem()
+            # Add category headers and apps
+            for category in self.categories:
+                # Add category header
+                header_item = QListWidgetItem()
+                header_item.setText(f"📁 {category}")
+                header_item.setBackground(QColor("#f0f0f0"))
+                header_item.setFlags(header_item.flags() & ~Qt.ItemIsSelectable)
+                self.exe_list.addItem(header_item)
                 
-                # Check if it's a known compatible app
-                is_compatible = False
-                if category in self.compatible_apps and exe["name"] in self.compatible_apps[category]:
-                    is_compatible = True
-                    app_info = self.compatible_apps[category][exe["name"]]
-                    item.setToolTip(f"Compatibility: {app_info['compatibility']}\nWine Version: {app_info['wine_version']}\n{app_info['notes']}")
+                # Add apps in this category
+                category_apps = self.categories.get(category, [])
+                for exe_index in category_apps:
+                    if exe_index >= len(self.exes):
+                        print(f"Warning: Invalid exe_index {exe_index} for category {category}")
+                        continue
+                        
+                    exe = self.exes[exe_index]
+                    item = QListWidgetItem()
+                    
+                    # Check if it's a known compatible app
+                    is_compatible = False
+                    if category in self.compatible_apps and exe["name"] in self.compatible_apps[category]:
+                        is_compatible = True
+                        app_info = self.compatible_apps[category][exe["name"]]
+                        item.setToolTip(f"Compatibility: {app_info['compatibility']}\nWine Version: {app_info['wine_version']}\n{app_info['notes']}")
+                    
+                    # Set item text with compatibility indicator
+                    display_name = exe.get("custom_name", exe["name"])
+                    if is_compatible:
+                        item.setText(f"✨ {display_name}")
+                    else:
+                        item.setText(display_name)
+                    
+                    item.setData(Qt.UserRole, exe_index)
+                    self.exe_list.addItem(item)
                 
-                # Set item text with compatibility indicator
-                display_name = exe.get("custom_name", exe["name"])
-                if is_compatible:
-                    item.setText(f"✨ {display_name}")
-                else:
-                    item.setText(display_name)
+                # Add spacing after category
+                spacer = QListWidgetItem()
+                spacer.setFlags(Qt.NoItemFlags)
+                spacer.setSizeHint(QSize(0, 10))
+                self.exe_list.addItem(spacer)
                 
-                item.setData(Qt.UserRole, exe_index)
-                self.exe_list.addItem(item)
-            
-            # Add spacing after category
-            spacer = QListWidgetItem()
-            spacer.setFlags(Qt.NoItemFlags)
-            spacer.setSizeHint(QSize(0, 10))
-            self.exe_list.addItem(spacer)
+        except Exception as e:
+            error_msg = f"Error refreshing list: {str(e)}"
+            print(error_msg)  # Print to console for debugging
+            self.status_bar.showMessage(error_msg)
+            QMessageBox.critical(self, "Error", error_msg)
     
     def get_wine_command(self):
         """Get the appropriate wine command"""
